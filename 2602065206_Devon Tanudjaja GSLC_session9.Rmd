@@ -1,0 +1,177 @@
+```{r}
+install.packages("rlang")
+
+install.packages("ggplot2")
+library(ggplot2)
+```
+# 1. Select 1 dependent variable from your selected datasets for AOL, and a set of independent variables. Calculate the correlations between the dependent variable and the independent variables, analyze what do the values imply. Make sure to use the correct correlation method according to the types of the variables compared!
+
+```{r}
+data <- read.csv("Flight_delay.csv")
+dependent <- c("DepTime", "Distance", "DayOfWeek", "LateAircraftDelay", "NASDelay", "WeatherDelay", "CarrierDelay")
+```
+
+```{r}
+colnames(data)
+```
+
+
+
+Check types of dependent variables
+```{r}
+sapply(data[dependent], class)
+#all dependent variables are integers
+```
+
+
+Turn ArrTime and DepTime into minutes
+```{r}
+
+
+data$ArrTimeMinutes <- (data$ArrTime%/%100)*60 + data$ArrTime%%100
+
+data$DepTimeMinutes <- (data$DepTime%/%100)*60 + data$DepTime%%100
+
+```
+
+
+Add Month
+```{r}
+data$Month <- format(as.Date(data$Date, format="%d-%m-%Y"), "%m")
+
+dependent <- c("DepTimeMinutes", "Distance", "DayOfWeek", "Month", "TaxiIn", "AirTime")
+```
+
+
+Find correlation between dependent features and ArrTime
+```{r}
+corr_mat = cor(data$ArrTimeMinutes, data[c("Distance", "DepTimeMinutes", "TaxiIn", "AirTime")], method=("pearson"))
+corr_mat
+
+#most of the values have magnitute <0.1 meaning that there is not much correlation
+```
+```{r}
+ggplot(data, aes(x=DepTime, y=ArrTime)) + geom_point()
+```
+
+
+# 2. Why do we need to perform statistical tests? If it is possible on your dataset, try performing these tests and analyze what do they mean. Here is a list or articles that may assist you in learning more about them.
+# https://medium.com/@anushka.da3/types-of-statistical-tests-b8ceb90e13b3
+# https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6639881/
+
+Statistical Tests
+```{r}
+data$TotalDelay <- data$LateAircraftDelay + data$NASDelay + data$WeatherDelay + data$CarrierDelay
+
+#Use anova to see if there is a statistically significant difference on total delay for days of week
+
+data$DayOfWeek <- as.factor(data$DayOfWeek) #for handling categorical data
+anova_test = aov(TotalDelay ~ DayOfWeek, data = data)
+summary(anova_test)
+
+#since the p value is smaller than 0.05, we can confidently say that there is a statistically significant difference in the total delay for days of week
+```
+
+Chi Squared
+```{r}
+DelayPerDay = c()
+
+for(i in 1:7)
+{
+  DelayPerDay <- append(DelayPerDay, sum(data[data$DayOfWeek == i, "TotalDelay"]))
+}
+
+chisq.test(DelayPerDay)
+```
+
+
+
+#3. Train a predictive machine learning model in R to predict your selected dependent variable! Remember, please have all members of your groups trying different predictive models (e.g. one uses Random Forest, the other uses Support Vector Machine, while the other one uses Multi-layer Perceptron). Evaluate the model and explain about the results! 
+
+
+# menggunakan decision tree regression
+
+```{r}
+# Install dan memuat pustaka yang diperlukan
+install.packages("rpart")
+library(rpart)
+```
+
+
+# untuk Membangun dan menampilkan model decision tree regression
+```{r}
+# modeling
+model <- rpart(DepTime ~ ., data = data, method = "anova")
+print(model)
+```
+
+
+
+```{r}
+install.packages("ISLR")
+library(ISLR)
+```
+
+
+
+```{r}
+names(data)
+```
+
+
+
+```{r}
+hist(data$ArrTime)
+```
+
+```{r}
+install.packages("caTools")
+library(caTools)
+install.packages("rpart.plot")
+library(rpart.plot)
+install.packages("dplyr")
+library(dplyr)
+```
+
+
+```{r}
+set.seed(42)
+sample_split <- sample.split(Y = data$DepTime, SplitRatio = 0.75)
+train_set <- subset(x = data, sample_split == TRUE)
+test_set <- subset(x = data, sample_split == FALSE)
+```
+
+
+```{r}
+# modeling
+model <- rpart(ArrTime ~ ., data = data, method = "anova") 
+print(model)
+```
+
+```{r}
+rpart.plot(model)
+```
+
+```{r}
+prop.table(table(data$Airline))
+```
+
+```{r}
+# untuk membuat inisial decision tree
+tree <- rpart(Date ~ SecurityDelay + WeatherDelay, data=data, control=rpart.control(cp=.0001))
+
+# untuk mengidentifikasi nilai cp terbaik untuk digunakan
+best <- tree$cptable[which.min(tree$cptable[,"xerror"]),"CP"]
+
+# untuk memproduksi pruned tree berdasarkan nilai terbaik CP
+pruned_tree <- prune(tree, cp=best)
+
+# untuk membuat pruned tree
+prp(pruned_tree)
+```
+```
+
+
+
+
+
